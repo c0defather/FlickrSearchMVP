@@ -1,6 +1,5 @@
 package c0defather.flickr.injection.module
 
-import android.util.Log
 import c0defather.flickr.data.remote.PhotoService
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -13,6 +12,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import javax.inject.Named
 import javax.inject.Singleton
 
 
@@ -24,13 +24,14 @@ open class NetworkModule {
     companion object {
         const val API_URL = "https://api.flickr.com/services/rest/"
         const val API_KEY = "b3909e28e48c0103fc089ab6abf12681"
+        const val FLICKR = "flickr"
     }
 
     @Provides
     @Singleton
     fun provideGson(): Gson = GsonBuilder().create()
 
-    @Provides
+    @Provides @Named(FLICKR)
     @Singleton
     fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder().addInterceptor { chain ->
         var request = chain.request()
@@ -39,25 +40,28 @@ open class NetworkModule {
                 .addQueryParameter("format", "json").build()
         request = request.newBuilder().url(url).build()
         val response = chain.proceed(request)
+
         var body = response.body().string()
-        body = body.trimEnd().substring("jsonFlickrApi(".length)
+        val flickrPrefix = "jsonFlickrApi("
+        body = body.trimEnd().substring(flickrPrefix.length)
         val jsonBody = JSONObject(body)
-        var array : JSONArray
-        array = if (jsonBody.has("photos"))
-            JSONObject(body)
+        val array = when {
+            jsonBody.has("photos") -> jsonBody
                     .getJSONObject("photos")
                     .getJSONArray("photo")
-        else
-            JSONObject(body)
+            jsonBody.has("sizes") -> jsonBody
                     .getJSONObject("sizes")
                     .getJSONArray("size")
+            else -> JSONArray()
+        }
         val newBody = ResponseBody.create(response.body().contentType(), array.toString())
         response.newBuilder().body(newBody).build()
+
     }.build()
 
-    @Provides
+    @Provides @Named(FLICKR)
     @Singleton
-    fun provideRetrofit(okHttpClient: OkHttpClient, gson: Gson): Retrofit {
+    fun provideRetrofit(@Named(FLICKR) okHttpClient: OkHttpClient, gson: Gson): Retrofit {
         return Retrofit.Builder()
                 .client(okHttpClient)
                 .baseUrl(API_URL)
@@ -68,5 +72,5 @@ open class NetworkModule {
 
     @Provides
     @Singleton
-    open fun providePhotoService(retrofit: Retrofit): PhotoService = retrofit.create(PhotoService::class.java)
+    open fun providePhotoService(@Named(FLICKR) retrofit: Retrofit): PhotoService = retrofit.create(PhotoService::class.java)
 }

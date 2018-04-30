@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Flickr Search</string>
+    <string name="search_hint">Поиск</string>
+    <string name="error">Произошла ошибка. Попробуйте позже</string>
+    <string name="no_results">Результаты не найдены</string>
+    <string name="start_search">Начните поиск изображений,\nнажав на иконку сверху</string>
+</resources>
